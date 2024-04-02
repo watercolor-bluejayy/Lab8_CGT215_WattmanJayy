@@ -43,26 +43,79 @@ int main()
 {
     RenderWindow window(VideoMode(800, 600), "Duck Hunter");
     World world(Vector2f(0, 0)); //Gravity set to zero because we don't want it pulling on anything
-    int score(0);
-    int arrows(1);
+    int score(0); //start at zero because you haven't earned any points yet
+    int arrows(5); //start at 5 so it can decrement down
+    int fontSz(48);
+
+    Font font;
+    if (!font.loadFromFile("arial.ttf")) 
+    {
+        cout << "Could not load font" << endl;
+        exit(0);
+    }
 
     //let's make our crossbow
     PhysicsSprite crossbow;
     Texture cbowTex;
     LoadTex(cbowTex, "images/crossbow.png");
     crossbow.setTexture(cbowTex);
-    Vector2f sz = crossbow.getSize();
-    crossbow.setCenter(Vector2f(400, 600 - (sz.y / 2)));
+    Vector2f szBow = crossbow.getSize();
+    crossbow.setCenter(Vector2f(400, 600 - (szBow.y / 2)));
 
     //time to make the arrow
     PhysicsSprite arrow;
     Texture arrowTex; 
     LoadTex(arrowTex, "images/arrow.png"); 
-    arrow.setTexture(arrowTex); 
+    arrow.setTexture(arrowTex);
     bool drawingArrow(false);
 
+    //Let's make a ceiling so the arrows don't just go flying on forever
+    PhysicsRectangle top;
+    top.setSize(Vector2f(800, 10));
+    top.setCenter(Vector2f(400, 5)); 
+    top.setStatic(true); 
+    world.AddPhysicsBody(top); 
+    top.onCollision = [&arrow, &arrows, &world, &drawingArrow](PhysicsBodyCollisionResult result) 
+        {
+            arrows--;
+            drawingArrow = false;
+            world.RemovePhysicsBody(arrow);
+        };
+  
+
+    //ducks quack quack
+    Texture duckTex;
+    LoadTex(duckTex, "images/duck.png");
+    PhysicsShapeList<PhysicsSprite> ducks;
+
+    //need a wall for the ducks to collide with so it can be removed
+    PhysicsRectangle rWall;
+    rWall.setSize(Vector2f(10, 600));
+    rWall.setCenter(Vector2f(950, 400)); //needs to be just past the view port so it looks like the ducks are moving on
+    rWall.setStatic(true);
+    world.AddPhysicsBody(rWall);
+
+    //text
+    Text arrowText;
+    arrowText.setFont(font); 
+    arrowText.setCharacterSize(fontSz); 
+    
+    Text scoreText; 
+    scoreText.setFont(font); 
+    scoreText.setCharacterSize(fontSz); 
+
+    //let's start some time set up
+    Clock clock;
+    Time lastTime(clock.getElapsedTime());
+    Time lastDUCKTime(clock.getElapsedTime()); //ducks need their own time loop so it can look like an endless scroll of ducks
 
 
+    //Game loop time
+    while(arrows > 0) 
+    {
+        Time currentTime(clock.getElapsedTime());
+        int deltaTime((currentTime - lastTime).asMilliseconds());
+    }
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
