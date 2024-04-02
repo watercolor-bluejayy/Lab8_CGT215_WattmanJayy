@@ -2,10 +2,67 @@
 //
 
 #include <iostream>
+#include <SFML/Graphics.hpp>
+#include <SFPhysics.h>
+#include <vector>
+
+using namespace std;
+using namespace sf;
+using namespace sfp;
+
+//keyboard speed constant, affects how much power each key press imparts on the cbow
+const float KB_Speed = 0.2;
+
+//function for loading textures that can be referenced later
+void LoadTex(Texture& tex, string filename)
+{
+    if (!tex.loadFromFile(filename)) 
+    {
+        cout << "Could not load " << filename << endl;
+    }
+}
+
+//function for crossbow motion inputs
+void MoveCbow(PhysicsSprite& crossbow, int elapsedMS) 
+{
+    if (Keyboard::isKeyPressed(Keyboard::Right)) 
+    {
+        Vector2f newPos(crossbow.getCenter());
+        newPos.x = newPos.x + (KB_Speed * elapsedMS);
+        crossbow.setCenter(newPos);
+    }
+    if (Keyboard::isKeyPressed(Keyboard::Left))
+    {
+        Vector2f newPos(crossbow.getCenter());
+        newPos.x = newPos.x - (KB_Speed * elapsedMS);
+        crossbow.setCenter(newPos);
+    }
+}
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    RenderWindow window(VideoMode(800, 600), "Duck Hunter");
+    World world(Vector2f(0, 0)); //Gravity set to zero because we don't want it pulling on anything
+    int score(0);
+    int arrows(1);
+
+    //let's make our crossbow
+    PhysicsSprite crossbow;
+    Texture cbowTex;
+    LoadTex(cbowTex, "images/crossbow.png");
+    crossbow.setTexture(cbowTex);
+    Vector2f sz = crossbow.getSize();
+    crossbow.setCenter(Vector2f(400, 600 - (sz.y / 2)));
+
+    //time to make the arrow
+    PhysicsSprite arrow;
+    Texture arrowTex; 
+    LoadTex(arrowTex, "images/arrow.png"); 
+    arrow.setTexture(arrowTex); 
+    bool drawingArrow(false);
+
+
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
