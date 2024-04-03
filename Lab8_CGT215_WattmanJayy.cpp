@@ -11,7 +11,7 @@ using namespace sf;
 using namespace sfp;
 
 //keyboard speed constant, affects how much power each key press imparts on the cbow
-const float KB_Speed = 0.2;
+const float KB_Speed = 0.2; // magic number, might need to adjust
 
 //function for loading textures that can be referenced later
 void LoadTex(Texture& tex, string filename)
@@ -55,7 +55,7 @@ int main()
     }
 
     //let's make our crossbow
-    PhysicsSprite crossbow;
+    PhysicsSprite& crossbow = *new PhysicsSprite();
     Texture cbowTex;
     LoadTex(cbowTex, "images/crossbow.png");
     crossbow.setTexture(cbowTex);
@@ -72,7 +72,7 @@ int main()
     //Let's make a ceiling so the arrows don't just go flying on forever
     PhysicsRectangle top;
     top.setSize(Vector2f(800, 10));
-    top.setCenter(Vector2f(400, 5)); 
+    top.setCenter(Vector2f(400, -5)); 
     top.setStatic(true); 
     world.AddPhysicsBody(top); 
     top.onCollision = [&arrow, &arrows, &world, &drawingArrow](PhysicsBodyCollisionResult result) 
@@ -115,7 +115,127 @@ int main()
     {
         Time currentTime(clock.getElapsedTime());
         int deltaTime((currentTime - lastTime).asMilliseconds());
+
+        if (deltaTime > 2) 
+        {
+            lastTime = currentTime;
+            world.UpdatePhysics(deltaTime);
+            if (Keyboard::isKeyPressed(Keyboard::Space) && !drawingArrow) 
+            {
+                drawingArrow = true;
+                arrow.setCenter(crossbow.getCenter());
+                arrow.setVelocity(Vector2f(0, -1.2)); //magic number, might need to adjust
+                world.AddPhysicsBody(arrow);
+            }
+
+            window.clear();
+            window.draw(crossbow);
+            if (drawingArrow) 
+            {
+                window.draw(arrow);
+            }
+
+            //arrows text
+            arrowText.setString(to_string(arrows)); 
+            FloatRect arrowSz(arrowText.getGlobalBounds()); 
+            arrowText.setPosition(Vector2f(20 - (arrowSz.width / 2), 560 - (arrowSz.height / 2)));
+            window.draw(arrowText); 
+
+            //score text
+            scoreText.setString(to_string(score)); 
+            FloatRect scoreSz(scoreText.getGlobalBounds()); 
+            scoreText.setPosition(Vector2f(770 - (arrowSz.width), 560 - (arrowSz.height))); 
+            window.draw(scoreText); 
+
+            //duck time, let's get to drawing 'em
+            Time currentDUCKTime(clock.getElapsedTime()); //ducks need their own time loop, I capitalized the "DUCK" so I'd be less likely to miss it upon editing
+            if ((currentDUCKTime - lastDUCKTime).asSeconds() >= 1) 
+            {
+                lastDUCKTime = currentDUCKTime;
+
+                PhysicsSprite& newDuck = ducks.Create();
+                newDuck.setTexture(duckTex);
+                newDuck.setScale(Vector2f(0.5, 0.5)); 
+                newDuck.setCenter(Vector2f(0, 120 - (newDuck.getGlobalBounds().height / 2))); 
+                newDuck.setVelocity(Vector2f(0.5, 0)); 
+                world.AddPhysicsBody(newDuck); 
+                newDuck.onCollision = [&world, &arrow, &arrows, &drawingArrow, &newDuck, &ducks, &score, &rWall](PhysicsBodyCollisionResult result)
+                    {
+                        if (result.object2 == arrow)
+                        {
+                            drawingArrow = false;
+                            arrows--;
+                            world.RemovePhysicsBody(arrow);
+                            world.RemovePhysicsBody(newDuck);
+                            ducks.QueueRemove(newDuck);
+                            score + 10;
+                        }
+                        if (result.object2 == rWall)
+                        {
+                            world.RemovePhysicsBody(newDuck);
+                            ducks.QueueRemove(newDuck);
+                        }
+                    };
+            }//end of the duck time if
+
+            for (auto duck : ducks) 
+            {
+                window.draw(duck);
+            }
+
+            window.draw(rWall); //remember this is our duck removal wall
+            window.display();
+            ducks.DoRemovals();
+
+        }
     }
+
+    //let's make the game end screen, we don't want the program to just end without warning
+    bool exitGame(false);
+    PhysicsRectangle backboard;
+    backboard.setSize(Vector2f(500, 300)); 
+    backboard.setCenter(Vector2f(400, 300)); 
+    backboard.setFillColor(Color(173, 216, 230)); //light blue to contrast the black background
+    backboard.setStatic(true); 
+
+    Text gameOverT;
+    gameOverT.setFont(font);
+    gameOverT.setString("Game Over");
+    gameOverT.setCharacterSize(fontSz);
+    gameOverT.setFillColor(Color(23, 94, 3)); //nice deep green for contrast with the light blue for readability
+    FloatRect goSz = gameOverT.getGlobalBounds();
+    gameOverT.setPosition(Vector2f(400 - (goSz.width / 2), 200 - (goSz.height)));
+
+    Text finalScore;
+    finalScore.setFont(font);
+    finalScore.setString("You scored: " + to_string(score) + " points!");
+    finalScore.setCharacterSize(fontSz);
+    finalScore.setFillColor(Color(23, 94, 3));
+    FloatRect FinScoreSz = finalScore.getGlobalBounds();
+    finalScore.setPosition(Vector2f(400 - (FinScoreSz.width / 2), 300 - (FinScoreSz.height)));
+
+    Text leaveText;
+    leaveText.setFont(font);
+    leaveText.setString("Press SPACE to exit game");
+    leaveText.setCharacterSize(fontSz * 0.75);
+    leaveText.setFillColor(Color(0, 0, 0));
+    FloatRect ltSz = leaveText.getGlobalBounds();
+    leaveText.setPosition(Vector2f(400 - (ltSz.width / 2), 400 - (ltSz.height)));
+
+    while (!exitGame) 
+    {
+        if (Keyboard::isKeyPressed(Keyboard::Space)) 
+        {
+            exitGame = true;
+        }
+        window.clear();
+        window.draw(backboard);
+        window.draw(gameOverT);
+        window.draw(finalScore);
+        window.draw(leaveText);
+        window.display();
+    }
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
