@@ -83,17 +83,41 @@ int main()
         };
   
 
-    //ducks quack quack
-    Texture duckTex;
-    LoadTex(duckTex, "images/duck.png");
-    PhysicsShapeList<PhysicsSprite> ducks;
-
     //need a wall for the ducks to collide with so it can be removed
     PhysicsRectangle rWall;
     rWall.setSize(Vector2f(10, 600));
     rWall.setCenter(Vector2f(950, 400)); //needs to be just past the view port so it looks like the ducks are moving on
     rWall.setStatic(true);
     world.AddPhysicsBody(rWall);
+
+    //ducks quack quack
+    Texture duckTex; 
+    LoadTex(duckTex, "images/duck.png"); 
+    PhysicsShapeList<PhysicsSprite> ducks; 
+    /*for (int i(0); i < 8; i++) 
+    {
+        PhysicsSprite& duck = ducks.Create();
+        duck.setTexture(duckTex);
+        int x = 50 + ((850 / 5) * i);
+        Vector2f sz = duck.getSize();
+        duck.setCenter(Vector2f(x, 20 + (sz.y / 2)));
+        duck.setVelocity(Vector2f(0.5, 0)); 
+        world.AddPhysicsBody(duck);
+        duck.onCollision = [&drawingArrow, &world, &arrow, &duck, &ducks, &score, &rWall](PhysicsBodyCollisionResult result) 
+            {
+            if (result.object2 == arrow) {
+                drawingArrow = false; 
+                world.RemovePhysicsBody(arrow);
+                world.RemovePhysicsBody(duck);
+                ducks.QueueRemove(duck);
+                score += 25;
+            }
+            if (result.object2 == rWall) {
+                world.RemovePhysicsBody(duck);
+                ducks.QueueRemove(duck);
+            }
+            };
+    }*/
 
     //text
     Text arrowText;
@@ -111,18 +135,22 @@ int main()
 
 
     //Game loop time
-    while(arrows > 0) 
+    long duckMS(0);
+    while((arrows > 0) || drawingArrow) 
     {
         Time currentTime(clock.getElapsedTime());
-        int deltaTime((currentTime - lastTime).asMilliseconds());
+        Time deltaTime = currentTime - lastTime;
+        long deltaMS = deltaTime.asMilliseconds();
 
-        if (deltaTime > 2) 
+        if (deltaMS > 9) 
         {
             lastTime = currentTime;
-            world.UpdatePhysics(deltaTime);
+            world.UpdatePhysics(deltaMS);
+            MoveCbow(crossbow, deltaMS);
             if (Keyboard::isKeyPressed(Keyboard::Space) && !drawingArrow) 
             {
                 drawingArrow = true;
+                arrows--;
                 arrow.setCenter(crossbow.getCenter());
                 arrow.setVelocity(Vector2f(0, -1.2)); //magic number, might need to adjust
                 world.AddPhysicsBody(arrow);
@@ -130,9 +158,15 @@ int main()
 
             window.clear();
             window.draw(crossbow);
+           
             if (drawingArrow) 
             {
                 window.draw(arrow);
+            }
+            ducks.DoRemovals();
+            for (PhysicsShape& duck : ducks) 
+            {
+                window.draw((PhysicsSprite&)duck);
             }
 
             //arrows text
@@ -147,41 +181,43 @@ int main()
             scoreText.setPosition(Vector2f(770 - (arrowSz.width), 560 - (arrowSz.height))); 
             window.draw(scoreText); 
 
-            //duck time, let's get to drawing 'em
-            Time currentDUCKTime(clock.getElapsedTime()); //ducks need their own time loop, I capitalized the "DUCK" so I'd be less likely to miss it upon editing
-            if ((currentDUCKTime - lastDUCKTime).asSeconds() >= 1) 
-            {
-                lastDUCKTime = currentDUCKTime;
 
-                PhysicsSprite& newDuck = ducks.Create();
-                newDuck.setTexture(duckTex);
-                newDuck.setScale(Vector2f(0.5, 0.5)); 
-                newDuck.setCenter(Vector2f(0, 120 - (newDuck.getGlobalBounds().height / 2))); 
-                newDuck.setVelocity(Vector2f(0.5, 0)); 
-                world.AddPhysicsBody(newDuck); 
-                newDuck.onCollision = [&world, &arrow, &arrows, &drawingArrow, &newDuck, &ducks, &score, &rWall](PhysicsBodyCollisionResult result)
-                    {
-                        if (result.object2 == arrow)
+            //duck time, let's get to drawing 'em
+            //Time currentDUCKTime(clock.getElapsedTime()); //ducks need their own time loop, I capitalized the "DUCK" so I'd be less likely to miss it upon editing
+            if (duckMS > 2000) 
+            {
+                duckMS = 0;
+                for (int i(0); i < 8; i++) {
+                    PhysicsSprite& newDuck = ducks.Create();
+                    newDuck.setTexture(duckTex);
+                    newDuck.setScale(Vector2f(0.5, 0.5));
+                    newDuck.setCenter(Vector2f(0, 120 - (newDuck.getGlobalBounds().height / 2)));
+                    newDuck.setVelocity(Vector2f(0.5, 0));
+                    world.AddPhysicsBody(newDuck);
+                    newDuck.onCollision = [&world, &arrow, &arrows, &drawingArrow, &newDuck, &ducks, &score, &rWall](PhysicsBodyCollisionResult result)
                         {
-                            drawingArrow = false;
-                            arrows--;
-                            world.RemovePhysicsBody(arrow);
-                            world.RemovePhysicsBody(newDuck);
-                            ducks.QueueRemove(newDuck);
-                            score + 10;
-                        }
-                        if (result.object2 == rWall)
-                        {
-                            world.RemovePhysicsBody(newDuck);
-                            ducks.QueueRemove(newDuck);
-                        }
-                    };
+                            if (result.object2 == arrow)
+                            {
+                                drawingArrow = false;
+                                arrows--;
+                                world.RemovePhysicsBody(arrow);
+                                world.RemovePhysicsBody(newDuck);
+                                ducks.QueueRemove(newDuck);
+                                score + 10;
+                            }
+                            if (result.object2 == rWall)
+                            {
+                                world.RemovePhysicsBody(newDuck);
+                                ducks.QueueRemove(newDuck);
+                            }
+                        };
+                }
             }//end of the duck time if
 
-            for (auto duck : ducks) 
+           /* for (auto duck : ducks) 
             {
                 window.draw(duck);
-            }
+            }*/
 
             window.draw(rWall); //remember this is our duck removal wall
             window.display();
